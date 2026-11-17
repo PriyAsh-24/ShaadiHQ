@@ -23,7 +23,7 @@ type WeddingWorkspace = { slug: string; name: string; heading: string; mainAdmin
 type GoogleCredential = { credential: string };
 declare global { interface Window { google?: { accounts: { id: { initialize: (o: {client_id:string;callback:(r:GoogleCredential)=>void})=>void; renderButton:(el:HTMLElement,o:Record<string,string>)=>void } } } } }
 
-const API = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+const API = getApiBaseUrl(process.env.API_URL);
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 const AUTH_STORAGE_KEY = "shaadi-hq-google-id-token";
 const inr = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
