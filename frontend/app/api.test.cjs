@@ -15,5 +15,5 @@ test("trims whitespace from the configured backend URL", () => {
 });
 
 test("requires an explicit backend URL for production builds", () => {
-  assert.throws(() => getApiBaseUrl("", "production"), /API_URL must be set/);
+  assert.throws(() => getApiBaseUrl("", "production"), /NEXT_PUBLIC_API_URL must be set/);
 });

@@ -125,7 +125,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the same value as the backend's `GOOGLE_CLIENT_ID`. Set `API_URL` in `frontend/.env.local` to the Go API base URL (for example, `http://localhost:8080`). The frontend strips trailing slashes from this value. Restart `npm run dev` after changing it.
+Open [http://localhost:3000](http://localhost:3000). Set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the same value as the backend's `GOOGLE_CLIENT_ID`. Set `NEXT_PUBLIC_API_URL` in `frontend/.env.local` to the Go API base URL (for example, `http://localhost:8080`). The frontend strips trailing slashes from this value. Restart `npm run dev` after changing it.
 
 ## Build and run the Windows backend executable
 
@@ -158,7 +158,7 @@ The Go executable runs only the API. The Next.js frontend still needs to be star
 
 ### Production configuration
 
-Production does not need an `.env` file. The backend reads configuration from the process environment; `.env` is only a local convenience. Configure `MONGODB_URI` and `GOOGLE_CLIENT_ID` in your backend hosting provider's environment/secrets settings. Also set `ADMIN_EMAILS` for the initial admin bootstrap, and set `MONGODB_DATABASE`, `CORS_ORIGIN`, and `PORT` when your deployment needs values other than their defaults. Set `API_URL` in the frontend hosting environment to the deployed Go API base URL and set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the Google Web Client ID. Next.js embeds `NEXT_PUBLIC_*` values at build time, so configure them before building/rebuilding the frontend. Do not bake database credentials or OAuth secrets into the executable or container image.
+Production does not need an `.env` file. The backend reads configuration from the process environment; `.env` is only a local convenience. Configure `MONGODB_URI` and `GOOGLE_CLIENT_ID` in your backend hosting provider's environment/secrets settings. Also set `ADMIN_EMAILS` for the initial admin bootstrap, and set `MONGODB_DATABASE`, `CORS_ORIGIN`, and `PORT` when your deployment needs values other than their defaults. Set `NEXT_PUBLIC_API_URL` in the frontend hosting environment to the deployed Go API base URL and set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the Google Web Client ID. Next.js embeds `NEXT_PUBLIC_*` values at build time, so configure them before building/rebuilding the frontend. Do not bake database credentials or OAuth secrets into the executable or container image.
 
 ## Environment variables
 
@@ -171,7 +171,7 @@ Production does not need an `.env` file. The backend reads configuration from th
 | `FAMILY_EMAILS` | Backend | No | Comma-separated initial Sharma family accounts. |
 | `CORS_ORIGIN` | Backend | No | Allowed frontend origin; defaults to `http://localhost:3000`. |
 | `PORT` | Backend | No | API port; defaults to `8080`. |
-| `API_URL` | Frontend | Yes in production | Go API base URL; local development defaults to `http://localhost:8080`. Set it before the Next.js build. |
+| `NEXT_PUBLIC_API_URL` | Frontend | Yes in production | Go API base URL; local development defaults to `http://localhost:8080`. Set it before the Next.js build. |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Frontend | Yes | Client ID used by the Google sign-in button. |
 
 MongoDB connection strings, OAuth secrets, and `.env` files must not be committed. The checked-in `.env.example` files contain placeholders only.
