@@ -6,7 +6,13 @@ const {
   getBudgetRoots,
   getBudgetSpender,
   getBudgetTotal,
+  getBudgetBalance,
 } = require("./budget.js");
+
+test("payment balance is the total less what is paid", () => {
+  assert.equal(getBudgetBalance({ amount: 5000, paidAmount: 2000 }), 3000);
+  assert.equal(getBudgetBalance({ amount: 5000 }), 5000);
+});
 
 const records = [
   { id: "legacy", title: "Decoration", amount: 18000 },

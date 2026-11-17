@@ -17,3 +17,4 @@ export function getBudgetTotal(records: BudgetRecord[]): number;
 export function matchesBudgetRecord(record: BudgetRecord, query: string): boolean;
 export function filterBudgetRoots<T extends BudgetRecord>(records: T[], query: string): T[];
 export function getBudgetSpender(record: BudgetRecord): string;
+export function getBudgetBalance(record: BudgetRecord): number;

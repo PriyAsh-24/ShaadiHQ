@@ -157,6 +157,28 @@
 .guest-page[data-theme="dark"] .event-date{background:#302b23;color:#e3c48e}
 @media(max-width:590px){.theme-toggle{width:33px;padding:0;justify-content:center;font-size:0}.theme-toggle span{font-size:16px}}
 
+/* Guest lookup uses the same quiet card, type, and green action as the family workspace. */
+.guest-lookup-card{display:block;padding:21px 22px;margin:28px 0 12px;box-shadow:0 8px 24px #34372d08}
+.guest-lookup-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 16px}
+.guest-lookup-heading{grid-column:1/-1}
+.guest-lookup-heading strong{display:block;font:500 20px 'Playfair Display',serif;color:var(--ink)}
+.guest-lookup-heading p{margin:5px 0 2px;color:#85877f;font-size:11px;line-height:1.6}
+.guest-lookup-form label{display:grid;gap:6px;color:#65685f;font-size:10px;font-weight:600}
+.guest-lookup-form input{width:100%;height:39px;min-width:0;padding:0 11px;border:1px solid #e7e7e0;border-radius:6px;background:#fff;color:#30332c;font-size:11px;outline:none;transition:border-color .15s,box-shadow .15s}
+.guest-lookup-form input:focus{border-color:#78917e;box-shadow:0 0 0 3px #4f695815}
+.guest-arrival-field{grid-column:1/-1}
+.guest-lookup-form .button-primary{height:38px;justify-self:start;padding:0 15px;font-size:10px}
+.guest-lookup-form .button-primary span{margin-left:8px}
+.guest-lookup-error{margin:14px 0 0;padding:10px 12px;border:1px solid #ead9d6;border-radius:6px;background:#fbf3f1;color:#9a5e58;font-size:11px;line-height:1.5}
+.guest-lookup-result{margin-top:16px;padding:14px;border:1px solid #e8ece6;border-radius:7px;background:#f7faf7}
+.guest-lookup-result strong{font-size:17px}
+.guest-page[data-theme="dark"] .guest-lookup-heading strong{color:#f0f0e9}
+.guest-page[data-theme="dark"] .guest-lookup-heading p,.guest-page[data-theme="dark"] .guest-lookup-form label{color:#c0c3b9}
+.guest-page[data-theme="dark"] .guest-lookup-form input{border-color:#454b43;background:#252923;color:#efefe8}
+.guest-page[data-theme="dark"] .guest-lookup-result{border-color:#3c4039;background:#292d27}
+.guest-page[data-theme="dark"] .guest-lookup-error{border-color:#684344;background:#46292a;color:#ffe8e8}
+@media(max-width:590px){.guest-lookup-card{padding:18px 16px}.guest-lookup-form{grid-template-columns:1fr;gap:12px}.guest-lookup-heading,.guest-arrival-field{grid-column:auto}.guest-lookup-form .button-primary{width:100%;justify-content:center}}
+
 .workspace-hub{min-height:100vh;background:var(--paper);color:var(--ink)}.hub-topbar{height:70px;border-bottom:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 max(28px,calc((100vw - 1160px)/2))}.hub-topbar .brand{padding:0}.hub-actions{display:flex;align-items:center;gap:18px}.user-button{border:0;background:transparent;text-align:left;cursor:pointer}.hub-content{max-width:1160px;margin:0 auto;padding:64px 28px}.hub-content>h1{font-size:42px}.hub-content>p{color:var(--muted);font-size:13px}.hub-heading{display:flex;align-items:center;justify-content:space-between;margin:42px 0 18px}.hub-heading h2{font:600 17px 'DM Sans';margin:0 0 5px}.hub-heading span{font-size:11px;color:var(--muted)}.wedding-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}.wedding-card{position:relative;min-height:250px;padding:22px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 6px 20px #373b3210;display:flex;flex-direction:column;align-items:flex-start}.wedding-card-mark{width:40px;height:40px;border-radius:12px;background:var(--green-pale);color:var(--green);display:grid;place-items:center;font-size:20px;margin-bottom:20px}.wedding-card h3{font:500 23px 'Playfair Display';margin:9px 0 5px}.wedding-card p{font-size:12px;color:var(--muted);margin:0}.wedding-card-admin{display:grid;gap:4px;margin:22px 0;color:var(--muted);font-size:10px}.wedding-card .button-primary{margin-top:auto}.hub-empty{margin-top:30px;padding:40px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:10px}.workspace-hub .error-banner{margin-top:20px}
 .workspace-hub[data-theme="dark"]{--ink:#efefe8;--muted:#b8bbb1;--line:#3c4039;--paper:#171916;--green:#89a88f;--green-dark:#b9d0be;--green-pale:#29372d;color-scheme:dark;background:var(--paper);color:var(--ink)}.workspace-hub[data-theme="dark"] .hub-topbar,.workspace-hub[data-theme="dark"] .wedding-card,.workspace-hub[data-theme="dark"] .hub-empty{background:#20231f;color:var(--ink);border-color:var(--line)}.workspace-hub[data-theme="dark"] .button-quiet,.workspace-hub[data-theme="dark"] .theme-toggle{background:#252923;color:#e5e7df;border-color:#444940}.workspace-hub[data-theme="dark"] h1,.workspace-hub[data-theme="dark"] h2,.workspace-hub[data-theme="dark"] h3,.workspace-hub[data-theme="dark"] b{color:#f0f0e9}.workspace-hub[data-theme="dark"] .button-primary{background:#55745d;border-color:#6b8a72;color:#fff}
 @media(max-width:650px){.hub-topbar{height:62px;padding:0 16px}.hub-topbar .user-card{display:none}.hub-actions{gap:8px}.hub-content{padding:38px 18px}.hub-content>h1{font-size:34px}.hub-heading{align-items:flex-start;gap:12px}.wedding-grid{grid-template-columns:1fr}.wedding-card{min-height:220px}}

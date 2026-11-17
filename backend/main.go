@@ -3,6 +3,9 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log"
@@ -10,6 +13,7 @@ import (
 	"net/mail"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -27,36 +31,51 @@ type App struct {
 	googleClientID string
 	allowedOrigin  string
 	defaultWedding string
+	sessionSecret  []byte
 	adminLock      sync.Mutex
 }
 
 type Record struct {
-	ID               primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
-	WeddingID        string              `bson:"weddingId,omitempty" json:"weddingId,omitempty"`
-	Type             string              `bson:"type" json:"type"`
-	Title            string              `bson:"title" json:"title"`
-	Area             string              `bson:"area,omitempty" json:"area,omitempty"`
-	Owner            string              `bson:"owner,omitempty" json:"owner,omitempty"`
-	AssigneeEmail    string              `bson:"assigneeEmail,omitempty" json:"assigneeEmail,omitempty"`
-	DueAt            *time.Time          `bson:"dueAt,omitempty" json:"dueAt,omitempty"`
-	EndsAt           *time.Time          `bson:"endsAt,omitempty" json:"endsAt,omitempty"`
-	Status           string              `bson:"status,omitempty" json:"status,omitempty"`
-	CheckedIn        bool                `bson:"checkedIn,omitempty" json:"checkedIn,omitempty"`
-	CheckedInAt      *time.Time          `bson:"checkedInAt,omitempty" json:"checkedInAt,omitempty"`
-	CheckedInBy      string              `bson:"checkedInBy,omitempty" json:"checkedInBy,omitempty"`
-	UpdatedBy        string              `bson:"updatedBy,omitempty" json:"updatedBy,omitempty"`
-	Details          string              `bson:"details,omitempty" json:"details,omitempty"`
-	Event            string              `bson:"event,omitempty" json:"event,omitempty"`
-	NotificationKind string              `bson:"notificationKind,omitempty" json:"notificationKind,omitempty"`
-	ParentID         *primitive.ObjectID `bson:"parentId,omitempty" json:"parentId,omitempty"`
-	Amount           *int64              `bson:"amount,omitempty" json:"amount,omitempty"`
-	Venue            string              `bson:"venue,omitempty" json:"venue,omitempty"`
-	StartsAt         *time.Time          `bson:"startsAt,omitempty" json:"startsAt,omitempty"`
-	Latitude         *float64            `bson:"latitude,omitempty" json:"latitude,omitempty"`
-	Longitude        *float64            `bson:"longitude,omitempty" json:"longitude,omitempty"`
-	CreatedBy        string              `bson:"createdBy,omitempty" json:"createdBy,omitempty"`
-	CreatedByName    string              `bson:"createdByName,omitempty" json:"createdByName,omitempty"`
-	UpdatedAt        time.Time           `bson:"updatedAt" json:"updatedAt"`
+	ID                primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
+	WeddingID         string              `bson:"weddingId,omitempty" json:"weddingId,omitempty"`
+	Type              string              `bson:"type" json:"type"`
+	Title             string              `bson:"title" json:"title"`
+	Area              string              `bson:"area,omitempty" json:"area,omitempty"`
+	Owner             string              `bson:"owner,omitempty" json:"owner,omitempty"`
+	AssigneeEmail     string              `bson:"assigneeEmail,omitempty" json:"assigneeEmail,omitempty"`
+	DueAt             *time.Time          `bson:"dueAt,omitempty" json:"dueAt,omitempty"`
+	EndsAt            *time.Time          `bson:"endsAt,omitempty" json:"endsAt,omitempty"`
+	Status            string              `bson:"status,omitempty" json:"status,omitempty"`
+	CheckedIn         bool                `bson:"checkedIn,omitempty" json:"checkedIn,omitempty"`
+	CheckedInAt       *time.Time          `bson:"checkedInAt,omitempty" json:"checkedInAt,omitempty"`
+	CheckedInBy       string              `bson:"checkedInBy,omitempty" json:"checkedInBy,omitempty"`
+	GuestName         string              `bson:"guestName,omitempty" json:"guestName,omitempty"`
+	GuestPhone        string              `bson:"guestPhone,omitempty" json:"guestPhone,omitempty"`
+	GuestInstructions string              `bson:"guestInstructions,omitempty" json:"guestInstructions,omitempty"`
+	ArrivalType       string              `bson:"arrivalType,omitempty" json:"arrivalType,omitempty"`
+	ArrivalNumber     string              `bson:"arrivalNumber,omitempty" json:"arrivalNumber,omitempty"`
+	ArrivalAt         *time.Time          `bson:"arrivalAt,omitempty" json:"arrivalAt,omitempty"`
+	PickupLocation    string              `bson:"pickupLocation,omitempty" json:"pickupLocation,omitempty"`
+	AssignedCar       string              `bson:"assignedCar,omitempty" json:"assignedCar,omitempty"`
+	PaymentStatus     string              `bson:"paymentStatus,omitempty" json:"paymentStatus,omitempty"`
+	PaidAmount        *int64              `bson:"paidAmount,omitempty" json:"paidAmount,omitempty"`
+	BillURL           string              `bson:"billUrl,omitempty" json:"billUrl,omitempty"`
+	BillData          string              `bson:"billData,omitempty" json:"billData,omitempty"`
+	BillFileName      string              `bson:"billFileName,omitempty" json:"billFileName,omitempty"`
+	Vendor            string              `bson:"vendor,omitempty" json:"vendor,omitempty"`
+	UpdatedBy         string              `bson:"updatedBy,omitempty" json:"updatedBy,omitempty"`
+	Details           string              `bson:"details,omitempty" json:"details,omitempty"`
+	Event             string              `bson:"event,omitempty" json:"event,omitempty"`
+	NotificationKind  string              `bson:"notificationKind,omitempty" json:"notificationKind,omitempty"`
+	ParentID          *primitive.ObjectID `bson:"parentId,omitempty" json:"parentId,omitempty"`
+	Amount            *int64              `bson:"amount,omitempty" json:"amount,omitempty"`
+	Venue             string              `bson:"venue,omitempty" json:"venue,omitempty"`
+	StartsAt          *time.Time          `bson:"startsAt,omitempty" json:"startsAt,omitempty"`
+	Latitude          *float64            `bson:"latitude,omitempty" json:"latitude,omitempty"`
+	Longitude         *float64            `bson:"longitude,omitempty" json:"longitude,omitempty"`
+	CreatedBy         string              `bson:"createdBy,omitempty" json:"createdBy,omitempty"`
+	CreatedByName     string              `bson:"createdByName,omitempty" json:"createdByName,omitempty"`
+	UpdatedAt         time.Time           `bson:"updatedAt" json:"updatedAt"`
 }
 
 type Admin struct {
@@ -72,6 +91,7 @@ type FamilyMember struct {
 	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
 	CreatedBy string    `bson:"createdBy" json:"createdBy"`
 	Active    bool      `bson:"active" json:"active"`
+	Role      string    `bson:"role,omitempty" json:"role,omitempty"`
 }
 
 type Member struct {
@@ -105,6 +125,10 @@ func main() {
 	}
 	if os.Getenv("GOOGLE_CLIENT_ID") == "" {
 		log.Fatal("GOOGLE_CLIENT_ID is required")
+	}
+	sessionSecret := []byte(os.Getenv("SESSION_SECRET"))
+	if len(sessionSecret) < 32 {
+		log.Fatal("SESSION_SECRET must be set to at least 32 characters")
 	}
 	database := os.Getenv("MONGODB_DATABASE")
 	if database == "" {
@@ -148,38 +172,74 @@ func main() {
 	if err = seedWeddingSchedule(ctx, db); err != nil {
 		log.Fatalf("initialize wedding schedule: %v", err)
 	}
-	app := &App{db: db, googleClientID: os.Getenv("GOOGLE_CLIENT_ID"), allowedOrigin: envOr("CORS_ORIGIN", "http://localhost:3000"), defaultWedding: "sharma-wedding"}
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", app.health)
-	mux.Handle("GET /api/weddings", app.requireIdentity(http.HandlerFunc(app.listWeddings)))
-	mux.Handle("POST /api/weddings", app.requireIdentity(http.HandlerFunc(app.createWedding)))
-	mux.Handle("PATCH /api/weddings/{slug}", app.requireAdmin(http.HandlerFunc(app.updateWeddingSettings)))
-	mux.Handle("PATCH /api/weddings/{slug}/main-admin", app.requireAdmin(http.HandlerFunc(app.setMainAdmin)))
-	mux.HandleFunc("GET /api/public/events", app.listPublicEvents)
-	mux.Handle("GET /api/me", app.requireUser(http.HandlerFunc(app.me)))
-	mux.Handle("GET /api/users", app.requireUser(http.HandlerFunc(app.listUsers)))
-	mux.Handle("GET /api/admins", app.requireAdmin(http.HandlerFunc(app.listAdmins)))
-	mux.Handle("POST /api/admins", app.requireAdmin(http.HandlerFunc(app.addAdmin)))
-	mux.Handle("DELETE /api/admins/{email}", app.requireAdmin(http.HandlerFunc(app.removeAdmin)))
-	mux.Handle("GET /api/family-members", app.requireAdmin(http.HandlerFunc(app.listFamilyMembers)))
-	mux.Handle("POST /api/family-members", app.requireAdmin(http.HandlerFunc(app.addFamilyMember)))
-	mux.Handle("DELETE /api/family-members/{email}", app.requireAdmin(http.HandlerFunc(app.removeFamilyMember)))
-	mux.Handle("GET /api/tasks", app.requireUser(http.HandlerFunc(app.listTasks)))
-	mux.Handle("POST /api/tasks", app.requireUser(http.HandlerFunc(app.createTask)))
-	mux.Handle("PATCH /api/tasks/{id}", app.requireUser(http.HandlerFunc(app.updateTask)))
-	mux.Handle("DELETE /api/tasks/{id}", app.requireUser(http.HandlerFunc(app.deleteTask)))
-	mux.Handle("PATCH /api/transport/{id}", app.requireUser(http.HandlerFunc(app.updateTransport)))
-	mux.Handle("GET /api/budget", app.requireAdmin(http.HandlerFunc(app.listBudget)))
-	mux.Handle("POST /api/budget", app.requireAdmin(http.HandlerFunc(app.createBudgetItem)))
-	mux.Handle("PATCH /api/budget/{id}", app.requireAdmin(http.HandlerFunc(app.updateBudgetItem)))
-	mux.Handle("DELETE /api/budget/{id}", app.requireAdmin(http.HandlerFunc(app.deleteBudgetItem)))
-	mux.Handle("PATCH /api/{collection}/{id}", app.requireUser(http.HandlerFunc(app.updateCollectionRecord)))
-	mux.Handle("DELETE /api/{collection}/{id}", app.requireUser(http.HandlerFunc(app.deleteCollectionRecord)))
-	mux.Handle("GET /api/{collection}", app.requireUser(http.HandlerFunc(app.listCollection)))
-	mux.Handle("POST /api/{collection}", app.requireUser(http.HandlerFunc(app.createCollectionRecord)))
+	if err = seedDressPickupReminder(ctx, db); err != nil {
+		log.Fatalf("initialize dress pickup reminder: %v", err)
+	}
+	app := &App{db: db, googleClientID: os.Getenv("GOOGLE_CLIENT_ID"), allowedOrigin: envOr("CORS_ORIGIN", "http://localhost:3000"), defaultWedding: "sharma-wedding", sessionSecret: sessionSecret}
+	mux := app.routes()
 	server := &http.Server{Addr: ":" + envOr("PORT", "8080"), Handler: app.cors(app.logAPIRequests(mux)), ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("Shaadi HQ API listening on %s", server.Addr)
 	log.Fatal(server.ListenAndServe())
+}
+
+func (a *App) routes() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", a.health)
+	mux.Handle("GET /api/weddings", a.requireIdentity(http.HandlerFunc(a.listWeddings)))
+	mux.Handle("POST /api/weddings", a.requirePlanningUser(http.HandlerFunc(a.createWedding)))
+	mux.Handle("PATCH /api/weddings/{slug}", a.requireAdmin(http.HandlerFunc(a.updateWeddingSettings)))
+	mux.Handle("PATCH /api/weddings/{slug}/main-admin", a.requireAdmin(http.HandlerFunc(a.setMainAdmin)))
+	mux.HandleFunc("GET /api/public/events", a.listPublicEvents)
+	mux.HandleFunc("POST /api/auth/session", a.createSession)
+	mux.HandleFunc("POST /api/public/guest-lookup", a.lookupGuest)
+	mux.Handle("GET /api/me", a.requireUser(http.HandlerFunc(a.me)))
+	mux.Handle("GET /api/users", a.requirePlanningUser(http.HandlerFunc(a.listUsers)))
+	mux.Handle("GET /api/admins", a.requireAdmin(http.HandlerFunc(a.listAdmins)))
+	mux.Handle("POST /api/admins", a.requireAdmin(http.HandlerFunc(a.addAdmin)))
+	mux.Handle("DELETE /api/admins/{email}", a.requireAdmin(http.HandlerFunc(a.removeAdmin)))
+	mux.Handle("GET /api/family-members", a.requireAdmin(http.HandlerFunc(a.listFamilyMembers)))
+	mux.Handle("POST /api/family-members", a.requireAdmin(http.HandlerFunc(a.addFamilyMember)))
+	mux.Handle("DELETE /api/family-members/{email}", a.requireAdmin(http.HandlerFunc(a.removeFamilyMember)))
+	mux.Handle("GET /api/tasks", a.requirePlanningUser(http.HandlerFunc(a.listTasks)))
+	mux.Handle("POST /api/tasks", a.requirePlanningUser(http.HandlerFunc(a.createTask)))
+	mux.Handle("PATCH /api/tasks/{id}", a.requirePlanningUser(http.HandlerFunc(a.updateTask)))
+	mux.Handle("DELETE /api/tasks/{id}", a.requirePlanningUser(http.HandlerFunc(a.deleteTask)))
+	mux.Handle("GET /api/transport", a.requireTransportUser(withCollection("transport", http.HandlerFunc(a.listCollection))))
+	mux.Handle("POST /api/transport", a.requireAdmin(withCollection("transport", http.HandlerFunc(a.createCollectionRecord))))
+	mux.Handle("PATCH /api/transport/{id}", a.requireTransportUser(http.HandlerFunc(a.updateTransport)))
+	mux.Handle("DELETE /api/transport/{id}", a.requireAdmin(http.HandlerFunc(a.deleteCollectionRecord)))
+	mux.Handle("GET /api/pickups", a.requireTransportUser(withCollection("pickups", http.HandlerFunc(a.listCollection))))
+	mux.Handle("POST /api/pickups", a.requireAdmin(withCollection("pickups", http.HandlerFunc(a.createCollectionRecord))))
+	mux.Handle("PATCH /api/pickups/{id}", a.requireAdmin(http.HandlerFunc(a.updateCollectionRecord)))
+	mux.Handle("DELETE /api/pickups/{id}", a.requireAdmin(http.HandlerFunc(a.deleteCollectionRecord)))
+	mux.Handle("POST /api/notifications", a.requirePlanningUser(withCollection("notifications", http.HandlerFunc(a.createCollectionRecord))))
+	mux.Handle("GET /api/budget", a.requireAdmin(http.HandlerFunc(a.listBudget)))
+	mux.Handle("POST /api/budget", a.requireAdmin(http.HandlerFunc(a.createBudgetItem)))
+	mux.Handle("PATCH /api/budget/{id}", a.requireAdmin(http.HandlerFunc(a.updateBudgetItem)))
+	mux.Handle("DELETE /api/budget/{id}", a.requireAdmin(http.HandlerFunc(a.deleteBudgetItem)))
+	mux.Handle("PATCH /api/{collection}/{id}", a.requireAdmin(http.HandlerFunc(a.updateCollectionRecord)))
+	mux.Handle("DELETE /api/{collection}/{id}", a.requireAdmin(http.HandlerFunc(a.deleteCollectionRecord)))
+	mux.Handle("GET /api/{collection}", a.requirePlanningUser(http.HandlerFunc(a.listCollection)))
+	mux.Handle("POST /api/{collection}", a.requireAdmin(http.HandlerFunc(a.createCollectionRecord)))
+	return mux
+}
+
+func withCollection(collection string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.SetPathValue("collection", collection)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func seedDressPickupReminder(ctx context.Context, db *mongo.Database) error {
+	collection := db.Collection("records")
+	count, err := collection.CountDocuments(ctx, bson.M{"weddingId": "sharma-wedding", "type": "task", "title": "Pick up wedding clothes"}, options.Count().SetLimit(1))
+	if err != nil || count > 0 {
+		return err
+	}
+	deadline := time.Date(2026, time.November, 19, 12, 0, 0, 0, time.FixedZone("IST", 5*60*60+30*60)).UTC()
+	_, err = collection.InsertOne(ctx, Record{ID: primitive.NewObjectID(), WeddingID: "sharma-wedding", Type: "task", Title: "Pick up wedding clothes", Area: "Shopping", Status: "To do", Details: "Pickup deadline: 19 November 2026. Confirm which outfits are ready and who will collect them.", DueAt: &deadline, CreatedBy: "system", CreatedByName: "Shaadi HQ", UpdatedAt: time.Now().UTC()})
+	return err
 }
 
 func envOr(key, fallback string) string {
@@ -552,7 +612,14 @@ func (a *App) me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "Could not load wedding settings")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"email": id.Email, "isAdmin": isAdmin, "isMainAdmin": strings.EqualFold(wedding.MainAdminEmail, id.Email), "wedding": wedding})
+	role, _ := a.memberRole(r.Context(), id.Email, weddingID)
+	if isAdmin {
+		role = "admin"
+	}
+	if role == "" {
+		role = "family"
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"email": id.Email, "role": role, "isAdmin": isAdmin, "isMainAdmin": strings.EqualFold(wedding.MainAdminEmail, id.Email), "wedding": wedding})
 }
 
 func (a *App) listUsers(w http.ResponseWriter, r *http.Request) {
@@ -711,6 +778,33 @@ func (a *App) requireUser(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}))
 }
+
+func (a *App) requirePlanningUser(next http.Handler) http.Handler {
+	return a.requireUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.Context().Value(userKey{}).(identity)
+		admin, err := a.isAdmin(r.Context(), id.Email, a.requestedWedding(r))
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Could not check access")
+			return
+		}
+		role, err := a.memberRole(r.Context(), id.Email, a.requestedWedding(r))
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Could not check access")
+			return
+		}
+		if !admin && role == "driver" {
+			writeError(w, http.StatusForbidden, "This account is limited to transport and pickups")
+			return
+		}
+		next.ServeHTTP(w, r)
+	}))
+}
+
+func (a *App) requireTransportUser(next http.Handler) http.Handler {
+	return a.requireUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r)
+	}))
+}
 func (a *App) requireAdmin(next http.Handler) http.Handler {
 	return a.requireUser(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Context().Value(userKey{}).(identity)
@@ -745,6 +839,9 @@ func (a *App) authenticate(r *http.Request) (identity, error) {
 	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 		return identity{}, errors.New("missing token")
 	}
+	if strings.HasPrefix(parts[1], "shq1.") {
+		return a.validateSession(parts[1])
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	payload, err := idtoken.Validate(ctx, parts[1], a.googleClientID)
@@ -763,6 +860,159 @@ func (a *App) authenticate(r *http.Request) (identity, error) {
 		return identity{}, errors.New("untrusted identity")
 	}
 	return id, nil
+}
+
+type sessionClaims struct {
+	Email   string `json:"email"`
+	Name    string `json:"name"`
+	Expires int64  `json:"exp"`
+}
+
+func (a *App) signSession(claims sessionClaims) (string, error) {
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		return "", err
+	}
+	encoded := base64.RawURLEncoding.EncodeToString(payload)
+	mac := hmac.New(sha256.New, a.sessionSecret)
+	_, _ = mac.Write([]byte(encoded))
+	return "shq1." + encoded + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
+}
+
+func (a *App) validateSession(token string) (identity, error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 || parts[0] != "shq1" {
+		return identity{}, errors.New("invalid session")
+	}
+	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil {
+		return identity{}, errors.New("invalid session signature")
+	}
+	mac := hmac.New(sha256.New, a.sessionSecret)
+	_, _ = mac.Write([]byte(parts[1]))
+	if !hmac.Equal(signature, mac.Sum(nil)) {
+		return identity{}, errors.New("invalid session signature")
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return identity{}, errors.New("invalid session payload")
+	}
+	var claims sessionClaims
+	if err = json.Unmarshal(payload, &claims); err != nil || claims.Email == "" || claims.Expires <= time.Now().Unix() {
+		return identity{}, errors.New("expired session")
+	}
+	return identity{Email: claims.Email, Name: claims.Name}, nil
+}
+
+func (a *App) createSession(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Credential string `json:"credential"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&input); err != nil || input.Credential == "" {
+		writeError(w, http.StatusBadRequest, "Google credential is required")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	payload, err := idtoken.Validate(ctx, input.Credential, a.googleClientID)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "Google sign-in could not be verified")
+		return
+	}
+	email, _ := payload.Claims["email"].(string)
+	verified := false
+	switch value := payload.Claims["email_verified"].(type) {
+	case bool:
+		verified = value
+	case string:
+		verified = value == "true"
+	}
+	name, _ := payload.Claims["name"].(string)
+	if email == "" || verified != true {
+		writeError(w, http.StatusUnauthorized, "Google account email is not verified")
+		return
+	}
+	token, err := a.signSession(sessionClaims{Email: strings.ToLower(email), Name: name, Expires: time.Now().Add(21 * 24 * time.Hour).Unix()})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Could not create session")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"token": token, "expiresAt": time.Now().Add(21 * 24 * time.Hour).UTC()})
+}
+
+func (a *App) memberRole(ctx context.Context, email, weddingID string) (string, error) {
+	var member FamilyMember
+	err := a.db.Collection("family_members").FindOne(ctx, bson.M{"weddingId": weddingID, "email": strings.ToLower(strings.TrimSpace(email)), "active": true}).Decode(&member)
+	if err == mongo.ErrNoDocuments {
+		return "", nil
+	}
+	return member.Role, err
+}
+
+func (a *App) lookupGuest(w http.ResponseWriter, r *http.Request) {
+	var query struct {
+		Name          string `json:"name"`
+		ArrivalNumber string `json:"arrivalNumber"`
+		ArrivalAt     string `json:"arrivalAt"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&query); err != nil {
+		writeError(w, http.StatusBadRequest, "Enter your name and train or flight number")
+		return
+	}
+	name := strings.ToLower(strings.Join(strings.Fields(query.Name), " "))
+	number := strings.ToLower(strings.TrimSpace(query.ArrivalNumber))
+	arrivalWindow, err := guestArrivalWindow(query.ArrivalAt)
+	if len(name) < 3 || len(number) < 3 || err != nil {
+		writeError(w, http.StatusBadRequest, "Enter your full name, train or flight number, and arrival time")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	nameMatch := bson.M{"$regex": "^" + regexpQuote(name) + "$", "$options": "i"}
+	numberMatch := bson.M{"$regex": "^" + regexpQuote(number) + "$", "$options": "i"}
+	base := bson.M{"$or": bson.A{bson.M{"title": nameMatch}, bson.M{"guestName": nameMatch}}, "arrivalNumber": numberMatch, "arrivalAt": arrivalWindow}
+	var stay, pickup Record
+	stayFilter := workspaceFilter(a.requestedWedding(r), bson.M{"type": "stays", "$or": base["$or"], "arrivalNumber": numberMatch, "arrivalAt": arrivalWindow})
+	stayErr := a.db.Collection("records").FindOne(ctx, stayFilter).Decode(&stay)
+	pickupFilter := workspaceFilter(a.requestedWedding(r), bson.M{"type": "pickups", "$or": base["$or"], "arrivalNumber": numberMatch, "arrivalAt": arrivalWindow})
+	pickupErr := a.db.Collection("records").FindOne(ctx, pickupFilter).Decode(&pickup)
+	if stayErr != nil && pickupErr != nil {
+		writeError(w, http.StatusNotFound, "No matching room and arrival details were found. Check the details or contact the family.")
+		return
+	}
+	nameFound := query.Name
+	if stayErr == nil && stay.Title != "" {
+		nameFound = stay.Title
+	} else if pickupErr == nil && pickup.Title != "" {
+		nameFound = pickup.Title
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"name": nameFound, "hotel": stay.Venue, "room": stay.Area, "stayDetails": stay.GuestInstructions, "arrivalAt": firstTime(stay.ArrivalAt, pickup.ArrivalAt), "pickupLocation": firstText(stay.PickupLocation, pickup.PickupLocation), "assignedCar": firstText(stay.AssignedCar, pickup.AssignedCar), "driver": firstText(stay.Owner, pickup.Owner), "pickupStatus": firstText(pickup.Status, stay.Status)})
+}
+
+func guestArrivalWindow(value string) (bson.M, error) {
+	arrivalAt, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return nil, err
+	}
+	return bson.M{"$gte": arrivalAt.Add(-time.Minute), "$lte": arrivalAt.Add(time.Minute)}, nil
+}
+
+func regexpQuote(s string) string { return regexp.QuoteMeta(s) }
+func firstText(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+func firstTime(values ...*time.Time) *time.Time {
+	for _, value := range values {
+		if value != nil {
+			return value
+		}
+	}
+	return nil
 }
 
 func bootstrapFamilyMembers(ctx context.Context, db *mongo.Database, emails map[string]bool, weddingID string) error {
@@ -808,6 +1058,7 @@ func (a *App) listFamilyMembers(w http.ResponseWriter, r *http.Request) {
 func (a *App) addFamilyMember(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Email string `json:"email"`
+		Role  string `json:"role"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid request body")
@@ -821,10 +1072,18 @@ func (a *App) addFamilyMember(w http.ResponseWriter, r *http.Request) {
 	}
 	actor := r.Context().Value(userKey{}).(identity)
 	weddingID := a.requestedWedding(r)
-	member := FamilyMember{WeddingID: weddingID, Email: email, CreatedAt: time.Now().UTC(), CreatedBy: strings.ToLower(actor.Email), Active: true}
+	role := strings.ToLower(strings.TrimSpace(request.Role))
+	if role == "" {
+		role = "family"
+	}
+	if role != "family" && role != "driver" {
+		writeError(w, http.StatusBadRequest, "Role must be family or driver")
+		return
+	}
+	member := FamilyMember{WeddingID: weddingID, Email: email, CreatedAt: time.Now().UTC(), CreatedBy: strings.ToLower(actor.Email), Active: true, Role: role}
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
-	_, err = a.db.Collection("family_members").UpdateOne(ctx, bson.M{"weddingId": weddingID, "email": email}, bson.M{"$set": bson.M{"active": true}, "$setOnInsert": bson.M{"weddingId": weddingID, "email": email, "createdAt": member.CreatedAt, "createdBy": member.CreatedBy}}, options.Update().SetUpsert(true))
+	_, err = a.db.Collection("family_members").UpdateOne(ctx, bson.M{"weddingId": weddingID, "email": email}, bson.M{"$set": bson.M{"active": true, "role": role}, "$setOnInsert": bson.M{"weddingId": weddingID, "email": email, "createdAt": member.CreatedAt, "createdBy": member.CreatedBy}}, options.Update().SetUpsert(true))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Could not grant family access")
 		return
@@ -990,12 +1249,16 @@ func (a *App) createBudgetItem(w http.ResponseWriter, r *http.Request) {
 }
 func (a *App) createRecord(w http.ResponseWriter, r *http.Request, typ string) {
 	var rec Record
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&rec); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 5<<20)).Decode(&rec); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if strings.TrimSpace(rec.Title) == "" {
 		writeError(w, http.StatusBadRequest, "title is required")
+		return
+	}
+	if len(rec.BillData) > 4<<20 {
+		writeError(w, http.StatusRequestEntityTooLarge, "Bill attachment must be 3 MB or smaller")
 		return
 	}
 	if rec.ParentID != nil {
@@ -1066,7 +1329,7 @@ func (a *App) listCollection(w http.ResponseWriter, r *http.Request) {
 	a.listByType(w, r, collection)
 }
 func allowedCollection(s string) bool {
-	return s == "guests" || s == "stays" || s == "transport" || s == "event" || s == "notifications"
+	return s == "guests" || s == "stays" || s == "transport" || s == "pickups" || s == "event" || s == "notifications"
 }
 func (a *App) updateTask(w http.ResponseWriter, r *http.Request) {
 	a.updateRecord(w, r, "task")
@@ -1120,13 +1383,33 @@ func (a *App) updateRecord(w http.ResponseWriter, r *http.Request, recordType st
 		return
 	}
 	var patch bson.M
-	if err = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&patch); err != nil {
+	if err = json.NewDecoder(http.MaxBytesReader(w, r.Body, 5<<20)).Decode(&patch); err != nil {
 		writeError(w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	for key := range patch {
-		if key != "title" && key != "area" && key != "owner" && key != "assigneeEmail" && key != "dueAt" && key != "endsAt" && key != "startsAt" && key != "status" && key != "details" && key != "event" && key != "amount" && key != "notificationKind" && key != "venue" && key != "latitude" && key != "longitude" && key != "checkedIn" {
+		if !allowedRecordUpdateField(key) {
 			delete(patch, key)
+		}
+	}
+	if image, ok := patch["billData"].(string); ok && len(image) > 4<<20 {
+		writeError(w, http.StatusRequestEntityTooLarge, "Bill attachment must be 3 MB or smaller")
+		return
+	}
+	if recordType == "transport" {
+		id := r.Context().Value(userKey{}).(identity)
+		admin, err := a.isAdmin(r.Context(), id.Email, a.requestedWedding(r))
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Could not check access")
+			return
+		}
+		if !admin {
+			for key := range patch {
+				if key != "status" && key != "latitude" && key != "longitude" {
+					writeError(w, http.StatusForbidden, "Driver accounts can only update their status and location")
+					return
+				}
+			}
 		}
 	}
 	if title, ok := patch["title"].(string); ok && strings.TrimSpace(title) == "" {
@@ -1146,7 +1429,7 @@ func (a *App) updateRecord(w http.ResponseWriter, r *http.Request, recordType st
 		}
 		patch["assigneeEmail"] = assignee
 	}
-	for _, key := range []string{"dueAt", "startsAt", "endsAt"} {
+	for _, key := range []string{"dueAt", "startsAt", "endsAt", "arrivalAt"} {
 		if value, ok := patch[key]; ok {
 			if value == nil || value == "" {
 				patch[key] = nil
@@ -1170,6 +1453,9 @@ func (a *App) updateRecord(w http.ResponseWriter, r *http.Request, recordType st
 	}
 	if amount, ok := patch["amount"].(float64); ok {
 		patch["amount"] = int64(amount)
+	}
+	if amount, ok := patch["paidAmount"].(float64); ok {
+		patch["paidAmount"] = int64(amount)
 	}
 	if checkedIn, ok := patch["checkedIn"].(bool); ok {
 		if recordType != "stays" {
@@ -1200,6 +1486,15 @@ func (a *App) updateRecord(w http.ResponseWriter, r *http.Request, recordType st
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+}
+
+func allowedRecordUpdateField(key string) bool {
+	switch key {
+	case "title", "area", "owner", "assigneeEmail", "dueAt", "endsAt", "startsAt", "status", "details", "event", "amount", "notificationKind", "venue", "latitude", "longitude", "checkedIn", "guestName", "guestPhone", "guestInstructions", "arrivalType", "arrivalNumber", "arrivalAt", "pickupLocation", "assignedCar", "paymentStatus", "paidAmount", "billUrl", "billData", "billFileName", "vendor":
+		return true
+	default:
+		return false
+	}
 }
 
 func (a *App) deleteRecord(w http.ResponseWriter, r *http.Request, recordType string) {

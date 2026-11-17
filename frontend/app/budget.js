@@ -40,6 +40,10 @@ function getBudgetSpender(record) {
   return record.createdByName || record.createdBy || "Unknown";
 }
 
+function getBudgetBalance(record) {
+  return (record.amount || 0) - (record.paidAmount || 0);
+}
+
 module.exports = {
   getBudgetRoots,
   getBudgetChildren,
@@ -47,4 +51,5 @@ module.exports = {
   matchesBudgetRecord,
   filterBudgetRoots,
   getBudgetSpender,
+  getBudgetBalance,
 };

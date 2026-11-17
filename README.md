@@ -15,9 +15,11 @@ Shaadi HQ is a family wedding planning app. The Next.js website talks to a Go AP
 
 ### Sign-in and access
 
-- Sign in with a verified Google account. The browser saves the Google ID token in local storage so refreshing the page does not return to sign-in until the token expires or the user signs out.
+- Sign in with a verified Google account. The API exchanges the short-lived Google ID token for a signed 21-day Shaadi HQ session. The browser stores that session in local storage, so refreshing does not immediately return to sign-in. Sessions expire after 21 days; changing `SESSION_SECRET` invalidates active sessions.
 - Admins can grant or revoke family access and admin access for a wedding. Access lists are wedding-specific.
+- Admins can grant the driver role. Drivers can access transport and pickup information and update vehicle status/location, but cannot access tasks, rooms, events, or budgets.
 - Family members can use planning features. Only admins can view or change budget records.
+- Events, guest groups, room assignments, and budgets are admin-write only. Family members can still update shared task notes and status.
 - The main admin is protected from removal until the role is transferred. At least one admin must remain.
 
 ### Overview and tasks
@@ -29,13 +31,15 @@ Shaadi HQ is a family wedding planning app. The Next.js website talks to a Go AP
 
 ### Budget
 
-- Admin-only budget items include an event, owner/vendor, amount, and the Google account that recorded the spend.
+- Admin-only budget items include an event, owner/vendor, amount, payment status/paid amount, and an optional bill photo/PDF (up to 3 MB) or bill link. The attachment is stored with the expense; vendor/payment values are entered manually because no OCR service is configured.
 - Add sub-budget spend details under an overall expense. The tracked total sums top-level expenses only; sub-budget amounts are displayed as a breakdown and are excluded from that total.
 - Search budget item names, vendors, spend details, and creator names. Edit and delete records; deleting a top-level item also deletes its sub-budget details.
 
 ### Guests, stays, and transport
 
 - Organize guest groups and hotel/room assignments with contacts, notes, and essentials.
+- Record a guest's arrival number/time, pickup location, assigned car, and driver on their room assignment. Guests can find room and pickup details on the public guest page using their exact name, train/flight number, and arrival time.
+- Maintain a pickup roster with guest arrival, station/airport, assigned driver/car, and pickup status.
 - Mark a room assignment checked in or undo check-in. The record shows who checked the guest in and when.
 - Track drivers and vehicles, with availability states such as Free, Going to pickup, Carrying guests, and Returning.
 - Drivers can optionally share phone location from the Transport page. The browser sends updates while the page is open and location sharing is enabled; it is not background tracking.
@@ -50,6 +54,7 @@ Shaadi HQ is a family wedding planning app. The Next.js website talks to a Go AP
 
 - Create shared updates such as cloth pickup or choreographer arrival. Updates appear in the wedding's Notifications feed.
 - Due tasks appear as reminders. The open app refreshes the feed and can show browser alerts after permission is granted. Browser alerts require the app to be open; they are not push notifications.
+- Due tasks include an Add to Calendar link that opens an all-day Google Calendar reminder.
 - Dark mode and the sign-in token are saved in browser local storage.
 
 ### Operations and diagnostics
@@ -102,7 +107,7 @@ Copy-Item backend/.env.example backend/.env
 notepad backend/.env
 ```
 
-Set `MONGODB_URI`, `GOOGLE_CLIENT_ID`, and at least one `ADMIN_EMAILS` address. See [backend/.env.example](backend/.env.example) for all available values. `FAMILY_EMAILS` is optional; admins can add family accounts from the Admin access page.
+Set `MONGODB_URI`, `GOOGLE_CLIENT_ID`, a random `SESSION_SECRET` of at least 32 characters, and at least one `ADMIN_EMAILS` address. Generate a secret with `openssl rand -base64 48`. See [backend/.env.example](backend/.env.example) for all available values. `FAMILY_EMAILS` is optional; admins can add family accounts from the Admin access page.
 
 Start the API from the backend directory so it reads `backend/.env`:
 
@@ -158,7 +163,7 @@ The Go executable runs only the API. The Next.js frontend still needs to be star
 
 ### Production configuration
 
-Production does not need an `.env` file. The backend reads configuration from the process environment; `.env` is only a local convenience. Configure `MONGODB_URI` and `GOOGLE_CLIENT_ID` in your backend hosting provider's environment/secrets settings. Also set `ADMIN_EMAILS` for the initial admin bootstrap, and set `MONGODB_DATABASE`, `CORS_ORIGIN`, and `PORT` when your deployment needs values other than their defaults. Set `NEXT_PUBLIC_API_URL` in the frontend hosting environment to the deployed Go API base URL and set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the Google Web Client ID. Next.js embeds `NEXT_PUBLIC_*` values at build time, so configure them before building/rebuilding the frontend. Do not bake database credentials or OAuth secrets into the executable or container image.
+Production does not need an `.env` file. The backend reads configuration from the process environment; `.env` is only a local convenience. Configure `MONGODB_URI`, `GOOGLE_CLIENT_ID`, and a persistent random `SESSION_SECRET` (at least 32 characters) in your backend hosting provider's environment/secrets settings. Keep the same session secret across deploys or every deploy will sign users out. Also set `ADMIN_EMAILS` for the initial admin bootstrap, and set `MONGODB_DATABASE`, `CORS_ORIGIN`, and `PORT` when your deployment needs values other than their defaults. Set `NEXT_PUBLIC_API_URL` in the frontend hosting environment to the deployed Go API base URL and set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the Google Web Client ID. Next.js embeds `NEXT_PUBLIC_*` values at build time, so configure them before building/rebuilding the frontend. Do not bake database credentials or OAuth secrets into the executable or container image.
 
 ## Environment variables
 
@@ -167,6 +172,7 @@ Production does not need an `.env` file. The backend reads configuration from th
 | `MONGODB_URI` | Backend | Yes | MongoDB connection string. Keep credentials private. |
 | `MONGODB_DATABASE` | Backend | No | Database name; defaults to `shaadi_hq`. |
 | `GOOGLE_CLIENT_ID` | Backend | Yes | Validates Google ID tokens. |
+| `SESSION_SECRET` | Backend | Yes | Persistent signing key (minimum 32 characters) for 21-day sessions. |
 | `ADMIN_EMAILS` | Backend | First setup | Comma-separated initial Sharma admins; also bootstraps the initial Upadhyay main admin. |
 | `FAMILY_EMAILS` | Backend | No | Comma-separated initial Sharma family accounts. |
 | `CORS_ORIGIN` | Backend | No | Allowed frontend origin; defaults to `http://localhost:3000`. |
@@ -178,7 +184,7 @@ MongoDB connection strings, OAuth secrets, and `.env` files must not be committe
 
 ## API overview
 
-All authenticated API requests use `Authorization: Bearer <Google ID token>`. Requests to a wedding route also include `X-Wedding-Slug`; the API checks that the signed-in account has access to that wedding before reading or changing its records.
+Authenticated API requests use `Authorization: Bearer <Shaadi HQ session token>`. The sign-in endpoint verifies the Google ID token before issuing a 21-day signed session. Requests to a wedding route also include `X-Wedding-Slug`; the API checks that the signed-in account has access to that wedding before reading or changing its records.
 
 | Endpoint | Access | Purpose |
 | --- | --- | --- |
