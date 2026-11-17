@@ -1,6 +1,6 @@
 module shaadi-hq/backend
 
-go 1.25.0
+go 1.27.4
 
 require (
 	go.mongodb.org/mongo-driver v1.17.4

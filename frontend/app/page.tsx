@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { filterBudgetRoots, getBudgetChildren, getBudgetRoots, getBudgetSpender, getBudgetTotal, matchesBudgetRecord } from "./budget.js";
+import { getApiBaseUrl } from "./api.js";
 import { nextTheme, readSavedTheme, saveTheme } from "./theme.js";
 import { isWeddingMainAdmin, weddingWorkspacePath } from "./workspace.js";
 
@@ -22,7 +23,7 @@ type WeddingWorkspace = { slug: string; name: string; heading: string; mainAdmin
 type GoogleCredential = { credential: string };
 declare global { interface Window { google?: { accounts: { id: { initialize: (o: {client_id:string;callback:(r:GoogleCredential)=>void})=>void; renderButton:(el:HTMLElement,o:Record<string,string>)=>void } } } } }
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 const AUTH_STORAGE_KEY = "shaadi-hq-google-id-token";
 const inr = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
